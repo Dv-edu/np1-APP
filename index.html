@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single Page Session Management</title>
+    <link rel="stylesheet" href="/Ex/css/w3.css">
+    <link rel="stylesheet" href="/Ex/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.6.8/plyr.css" />
+    <link rel="stylesheet" href="/Ex/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script> -->
+    <script src="https://cdn.plyr.io/3.6.8/plyr.polyfilled.js"></script>
+    <link rel="stylesheet" href="/Ex/css/bootstrap-icons.min.css">
+    <script>
+        // Function to check if the user is already logged in
+        window.url = 'http://localhost/Start/NET-JRF/app/'
+        function checkSession() {
+            $.ajax({
+                url: url + 'session.php',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'checkSession'
+                },            
+                xhrFields: {
+                    withCredentials: true // Important to include cookies in the request
+                },
+                success: function(response) {
+                    if (response.status === 'logged_in') {
+                        $('#loginForm').hide();
+                        $('#viewport').show();
+                        $('#loginResult').text(response.message);
+                        prepaire()
+                    } else {
+                        $('#loginForm').show();
+                        $('#viewport').hide();
+                    }
+                },
+                error: function() {
+                    $('#loginResult').text('Error checking session.');
+                }
+            });
+        }
+        loggingOn  = false;
+
+
+        $(document).ready(function() {
+            window.prepaire = function(){
+                getCode('All',function (e){
+                    videoData = e.code;
+                    if (loggingOn) console.log(videoData);
+                    
+                    var $videoTitles = $('#video-titles').empty();
+                    videoData.forEach(function(video) {
+                        var videoTitle = $('<div class="video-title"></div>').text(video);
+                        videoTitle.data('video', video);
+                        $videoTitles.append(videoTitle);
+                    
+
+                        videoTitle.on('click', function() {
+                            $('.video-title').removeClass('active');
+                            var videoId = $(this).addClass('active').data('video');
+                            if (loggingOn) console.log(videoId);
+                            
+                            getCode(videoId,(r)=>{
+                                if (loggingOn) console.log(r);
+                                player.source = {
+                                    type: 'video',
+                                    sources: [{
+                                        src: r.code,
+                                        provider: 'youtube',
+                                    }],
+                                };                            
+                            })
+
+                        });
+                    });
+
+                })                            
+            }            // Check session on page load
+            checkSession();
+
+            $('#loginForm form').on('submit', function(event) {
+                event.preventDefault();
+                
+                var token = $('#loginToken').val();
+                $('#loginResult').html(`<div class="loader m-auto my-5"></div>`);
+                $.ajax({
+                    url: url + 'session.php',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        action: 'login',
+                        token: token
+                    },            
+                    xhrFields: {
+                        withCredentials: true // Important to include cookies in the request
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            $('#loginResult').text(response.message);
+                            $('#loginForm').hide();
+                            $('#viewport').show();
+                            prepaire()
+                        } else {
+                            $('#loginResult').html(response.error);
+                        }
+                    },
+                    error: function() {
+                        $('#loginResult').text('An error occurred.');
+                    }
+                });
+            });
+
+
+        });
+
+        function getCode(name,resf){
+            // event.preventDefault();
+            $.ajax({
+                url: url + 'session.php',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'codebyname',
+                    name: name
+                },            
+                xhrFields: {
+                    withCredentials: true // Important to include cookies in the request
+                },
+                success: function(response) {
+                    // if (response.code) {
+                    resf(response);                    
+                    //     $('#codeResult').text('Code: ' + response.code);
+                    // } else {
+                    //     $('#codeResult').text(response.error);
+                    // }
+                },
+                error: function() {
+                    $('#codeResult').text('An error occurred.');
+                }
+            });
+        };
+        </script>
+    <style>
+        #loginForm {
+            max-width: 360px;
+        }
+    </style>
+
+    <style>
+        #viewport {
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            background-color: beige;
+        }
+        #sidebar {
+            width: 250px;
+            background-color: #f8f9fa;
+            background-color: beige;
+            padding: 10px 0;
+            overflow-y: auto;
+            border-right: 1px solid #ddd;
+        }
+        #main-container {
+            flex: 1;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .video-title {
+            cursor: pointer;
+            padding: 5px 7px;
+            border-bottom: 1px solid #ddd;
+        }
+        .video-title.active {
+            background: repeating-linear-gradient(45deg, black, #3f2d2d 100px);
+            color: white;
+        }
+        .video-title:hover {
+            background-color: #e9ecef;
+        }
+        .plyr__video-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            z-index: 1;
+        }
+        
+        .embed-responsive {
+            width: 100%;
+            height: 90%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .embed-responsive > div {
+            width: 95%;
+            height: 100%;
+        }
+        h4 {
+            padding: 5px 10px;
+            background: black;
+            border-radius: 10px;
+            margin: 5px;
+            margin-top: 0;
+            color: aliceblue;
+            text-align: center;
+        }
+        @media (max-width: 500px) {
+            #viewport {
+                flex-direction: column;
+            }
+            #sidebar {
+                width: unset;
+                border: 1px solid;
+                border-bottom-width: 2px;
+            }
+            #video-titles {
+                list-style-type: square;
+                margin-inline-start: 40px;
+            }
+            .video-title {
+                display: list-item;
+            }
+            .video-title::marker {
+                color: black;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="m-autow3-center d-flex justify-content-center">
+    <div id="loginForm" class="z-3 card  w3-center  m-2 my-2 p-2 rounded  " >
+    <h2 class="w3-text-black p-1">Login</h2>
+        <div class=" p-2 py-3 mx-1  mb-2 ">
+    
+        <!-- <h2 class="w3-text-black">Login</h2> -->
+        <p class="w3-text-brown">Write token down there and hit the login button.</p>
+        <form>
+            <label for="loginToken" class="w3-text-black">Token:</label><br>
+            <input  type="text" id="loginToken" name="loginToken" class="my-2 w-75  rounded p-1 w3-center " required>
+            <button type="submit" class="m-auto fw-bold my-1 btn rounded border-2 w3-pink card">Login</button>
+        </form>
+        <div id="loginResult"></div>
+    </div>
+        <div class="text-info ml-0 w3-right fw-bold  w3-brown rounded-1 w3-monospace m-1 ">&nbsp;&copy;2024 DEV &nbsp;</div>
+    </div></div>
+    
+    <!-- <div id="codeForm" style="display:none;">
+        <h2>Get Code by Name</h2>
+        <form>
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+            <button type="submit">Get Code</button>
+        </form>
+    </div> -->
+
+<div id="viewport" style="display: none; ">
+
+    <div id="sidebar">
+        <div id="codeResult"></div>
+        <h4>Videos <i class="bi bi-camera-video"></i></h4>
+        <div id="video-titles">
+            <div class="loader m-auto my-5"></div>
+        </div>
+    </div>
+    <div id="main-container">
+        <div class="embed-responsive embed-responsive-16by9">
+            <div id="player" data-plyr-provider="youtube" data-plyr-embed-id="K4TOrB7at0Y"></div>
+            <!--YfIj_RMhllQ  -->
+        </div>
+    </div>
+</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            window.player = new Plyr('#player', {
+                controls: [
+                    'play-large', // The large play button in the center
+                    //'restart', // Restart playback
+                    'rewind', // Rewind by the seek time (default 10 seconds)
+                    'play', // Play/pause playback
+                    'fast-forward', // Fast forward by the seek time (default 10 seconds)
+                    'progress', // The progress bar and scrubber for playback and buffering
+                    'current-time', // The current time of playback
+                    'duration', // The full duration of the media
+                    'mute', // Toggle mute
+                    'volume', // Volume control
+                    'captions', // Toggle captions
+                    'settings', // Settings menu
+                    'quality',
+                    // 'pip', // Picture-in-picture (currently Safari only)
+                    // 'airplay', // Airplay (currently Safari only)
+                    // 'download', // Show a download button with a link to either the current source or a custom URL you specify in your options
+                    'fullscreen' // Toggle fullscreen
+                ],
+                settings: ['captions', 'quality', 'speed', 'loop'],
+                quality: {
+                    default: 720,
+                    options: [4320, 2880, 2160, 1440, 1080, 720, 480, 360, 240, 144],
+                    forced: true,
+                    onChange: (e) => console.log(e)
+                }
+            });
+
+            var videoData = [];
+
+
+            function loadVideoTitles() {
+            }
+
+
+            // function loadVideoTitles() {
+            //     var $videoTitles = $('#video-titles').empty();
+            //     videoData.forEach(function(video) {
+            //         var videoTitle = $('<div class="video-title"></div>').text(video[1]);
+            //         videoTitle.data('video-id', video[0]);
+            //         $videoTitles.append(videoTitle);
+            //     });
+
+            //     $('.video-title').on('click', function() {
+            //         $('.video-title').removeClass('active');
+            //         var videoId = $(this).addClass('active').data('video-id');
+            //         player.source = {
+            //             type: 'video',
+            //             sources: [{
+            //                 src: videoId,
+            //                 provider: 'youtube',
+            //             }],
+            //         };
+            //     });
+            // }
+
+            // loadVideoTitles();
+            // loadVideoTitles();
+
+            // Load the first video by default
+            if (videoData.length > 0) {
+                $('#video-titles .video-title').first().click();
+            }
+        });
+
+                
+    </script>
+
+    <style>
+        .loader {
+            color: #000;
+            width: 4px;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            box-shadow: 19px 0 0 7px, 38px 0 0 3px, 57px 0 0 0;
+            transform: translateX(-38px);
+            animation: l21 .5s infinite alternate linear;
+        }
+
+        @keyframes l21 {
+            50%  {box-shadow: 19px 0 0 3px, 38px 0 0 7px, 57px 0 0 3px}
+            100% {box-shadow: 19px 0 0 0  , 38px 0 0 3px, 57px 0 0 7px}
+        }
+    </style>
+</body>
+</html>
+
